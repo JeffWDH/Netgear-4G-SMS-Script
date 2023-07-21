@@ -1,0 +1,103 @@
+#!/bin/bash
+# Send SMS messages from the CLI on supported Netgear 4G modems.
+# https://github.com/JeffWDH/Netgear-4G-SMS-Script
+#
+# Tested on a Netgear LB1120
+# Firmware Version: M18Q2_v12.09.163431
+# App Version: NTG9X07C_12.09.05.30
+# Web App Version: LBHDATA_03.03.103.176
+
+HOSTNAME=$1
+PASSWORD=$2
+PHONENUMBER=$3
+MESSAGE=${@:4}
+
+USAGE="netgearsms <hostname> <password> <phonenumber> <message>
+Maximum length of message is 335 characters."
+
+if [[ $HOSTNAME == "" ]];
+then
+  echo "$USAGE"
+  echo
+  echo "No hostname supplied. Exiting."
+  exit
+fi
+
+if [[ $PASSWORD == "" ]];
+then
+  echo "$USAGE"
+  echo
+  echo "No password supplied. Exiting."
+  exit
+fi
+
+if [[ $PHONENUMBER == "" ]];
+then
+  echo "$USAGE"
+  echo
+  echo "No phone number supplied. Exiting."
+  exit
+fi
+
+if [[ $MESSAGE == "" ]];
+then
+  echo "$USAGE"
+  echo
+  echo "No message supplied. Exiting."
+  exit
+fi
+
+MESSAGE_LENGTH=${#MESSAGE}
+
+# Message maximum length = 70
+# 5 * 70 = 350 characters
+# -15 for part counter = 335 max
+
+if [ $MESSAGE_LENGTH -gt 335 ]
+then
+  echo "Message is too long (maximum 335 characters)"
+  exit
+fi
+
+LOGIN_FORM=`curl -s -L -D - http://$HOSTNAME`
+LOGIN_COOKIE=`echo "$LOGIN_FORM" | grep Set-Cookie | grep -v unknown | cut -d= -f 2-`
+TOKEN=`echo "$LOGIN_FORM" | grep token | cut -d\" -f 6`
+AUTH_COOKIE=`curl -s -D - --cookie "sessionId=$LOGIN_COOKIE" \
+--data-urlencode "token=$TOKEN" \
+--data-urlencode "ok_redirect=/index.html" \
+--data-urlencode "err_redirect=/index.html" \
+--data-urlencode "session.password=$PASSWORD" \
+http://$HOSTNAME/Forms/config | grep Set-Cookie | grep -v unknown | cut -d= -f 2-`
+
+sendSMS () {
+  RESULT=`curl -s -L --cookie "sessionId=$AUTH_COOKIE" \
+  --data-urlencode "sms.sendMsg.receiver=$PHONENUMBER" \
+  --data-urlencode "sms.sendMsg.text=$1" \
+  --data-urlencode "sms.sendMsg.clientId=client" \
+  --data-urlencode "action=send" \
+  --data-urlencode "err_redirect=/error.json" \
+  --data-urlencode "ok_redirect=/success.json" \
+  --data-urlencode "token=$TOKEN" \
+  http://$HOSTNAME/Forms/smsSendMsg`
+
+  if [[ "$RESULT" != '{ "success": true }' ]]; then
+    echo "Message send failed."
+    exit
+  fi
+}
+
+if [ $MESSAGE_LENGTH -gt 70 ]
+then
+  NUM_PARTS=$((($MESSAGE_LENGTH+67-1)/67))
+  for ((X=0; X<$NUM_PARTS; X++))
+  do
+    START=$(($X*67))
+    SUBSTR="[$((X+1))]${MESSAGE:$START:67}"
+    sendSMS "$SUBSTR"
+  done
+else
+  sendSMS "$MESSAGE"
+fi
+
+# If it got here then it should have been a success.
+echo "Message sent."
