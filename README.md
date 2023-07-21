@@ -16,3 +16,22 @@ netgearsms <hostname> <password> <phonenumber> <message>
 ````
 
 The maximum message length for these modems is 70 characters. If the message provided is more than 70 characters (and less then 335), it will be split and sent in a maximum of 5 separate SMS messages. 
+
+Examples:
+````
+jeff@server:~$ ./netgearsms 192.168.5.1 password 0000000000 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusm
+Message sent.
+
+Resulting message:
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusm
+
+jeff@server:~$ ./netgearsms 192.168.5.1 password 0000000000 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Message sent.
+
+Resulting messages:
+[1]Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiu
+[2]smod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad
+[3] minim veniam, quis nostrud exercitation ullamco laboris nisi ut al
+[4]iquip ex ea commodo consequat. Duis aute irure dolor in reprehender
+[5]it in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+````
